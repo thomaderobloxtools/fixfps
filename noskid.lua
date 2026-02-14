@@ -19,7 +19,7 @@ local Camera = Workspace.CurrentCamera
 --================ NOTIFY =================
 pcall(function()
     StarterGui:SetCore("SendNotification", {
-        Title = "FIX LAG",
+        Title = "FIX LAG (beta)",
         Text = "Full Graphics FPS Boost Activated",
         Duration = 5
     })
