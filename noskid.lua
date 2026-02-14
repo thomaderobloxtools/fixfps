@@ -1,6 +1,6 @@
 --####################################################################
 --##  ULTRA FIX LAG / FPS BOOST - FULL GRAPHICS COMBAT STABILIZER   ##
---##  Authoring Level: Advanced Client Optimization                ##
+--##  UPGRADED: Bubble + Distance Priority + PvP Burst Optimizer  ##
 --####################################################################
 
 repeat task.wait() until game:IsLoaded()
@@ -19,13 +19,13 @@ local Camera = Workspace.CurrentCamera
 pcall(function()
     StarterGui:SetCore("SendNotification", {
         Title = "ULTRA FIX LAG",
-        Text  = "Full Graphics Stabilizer Active",
+        Text  = "Combat Optimizer Active",
         Duration = 6
     })
 end)
 
 local hint = Instance.new("Hint")
-hint.Text = "🔵 Fix Lag = ACTIVE (ULTRA MODE)"
+hint.Text = "🔵 Fix Lag = ACTIVE (PREMIUM MODE)"
 hint.Parent = Workspace
 task.delay(7, function() hint:Destroy() end)
 
@@ -45,19 +45,20 @@ Camera.FieldOfView = 70
 -------------------- STATE --------------------
 local STATE = {
     fps = 60,
-    load = "IDLE", -- IDLE | LIGHT | HEAVY | EXTREME
+    load = "IDLE",
+    burst = false
 }
 
--------------------- FPS METER (STABLE) --------------------
-local frameCount = 0
+-------------------- FPS METER --------------------
+local frames = 0
 local last = os.clock()
 
 RunService.RenderStepped:Connect(function()
-    frameCount += 1
+    frames += 1
     local now = os.clock()
     if now - last >= 1 then
-        STATE.fps = frameCount
-        frameCount = 0
+        STATE.fps = frames
+        frames = 0
         last = now
     end
 end)
@@ -75,28 +76,54 @@ local function classifyLoad()
     end
 end
 
--------------------- EFFECT BUDGET SYSTEM --------------------
-local EFFECT_LIMIT = {
+-------------------- COMBAT BUBBLE --------------------
+local BUBBLE_RADIUS = 55
+
+local function distanceFromCamera(pos)
+    return (Camera.CFrame.Position - pos).Magnitude
+end
+
+-------------------- EFFECT OPTIMIZER --------------------
+local EFFECT_SCALE = {
     IDLE    = 1.0,
-    LIGHT   = 0.7,
-    HEAVY   = 0.45,
-    EXTREME = 0.25
+    LIGHT   = 0.85,
+    HEAVY   = 0.65,
+    EXTREME = 0.45
 }
 
 local function optimizeEffect(obj)
-    if obj:IsA("ParticleEmitter") then
-        obj.Rate = math.floor(obj.Rate * EFFECT_LIMIT[STATE.load])
-        obj.LightEmission = 0
-        obj.LightInfluence = 0
-
-    elseif obj:IsA("Trail") or obj:IsA("Beam") then
-        if STATE.load == "EXTREME" then
-            obj.Enabled = false
+    if not obj:IsA("ParticleEmitter") then
+        if obj:IsA("Trail") or obj:IsA("Beam") then
+            if STATE.burst then
+                obj.Enabled = false
+            end
         end
+        return
     end
+
+    local parent = obj.Parent
+    if not parent or not parent:IsA("BasePart") then return end
+
+    local dist = distanceFromCamera(parent.Position)
+
+    local distFactor
+    if dist <= BUBBLE_RADIUS then
+        distFactor = 1
+    elseif dist <= 120 then
+        distFactor = 0.75
+    else
+        distFactor = 0.45
+    end
+
+    local loadFactor = EFFECT_SCALE[STATE.load]
+    local burstFactor = STATE.burst and 0.6 or 1
+
+    obj.Rate = math.floor(obj.Rate * distFactor * loadFactor * burstFactor)
+    obj.LightEmission = 0
+    obj.LightInfluence = 0
 end
 
--------------------- APPLY PASS --------------------
+-------------------- INITIAL PASS --------------------
 local function fullOptimize()
     for _,obj in ipairs(Workspace:GetDescendants()) do
         optimizeEffect(obj)
@@ -120,9 +147,26 @@ task.spawn(function()
     end
 end)
 
--------------------- SPAWN CONTROL --------------------
+-------------------- PvP BURST DETECTOR --------------------
+local burstCounter = 0
+
 Workspace.DescendantAdded:Connect(function(obj)
-    optimizeEffect(obj)
+    if obj:IsA("ParticleEmitter") then
+        burstCounter += 1
+        optimizeEffect(obj)
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.25) do
+        if burstCounter >= 8 then
+            STATE.burst = true
+            task.delay(0.4, function()
+                STATE.burst = false
+            end)
+        end
+        burstCounter = 0
+    end
 end)
 
 -------------------- TERRAIN --------------------
@@ -137,7 +181,7 @@ end
 -------------------- MEMORY STABILIZER --------------------
 task.spawn(function()
     while task.wait(20) do
-        collectgarbage("step", 300)
+        collectgarbage("step", 250)
     end
 end)
 
@@ -149,4 +193,4 @@ Player.CharacterAdded:Connect(function(char)
     end
 end)
 
-print(">> ULTRA FIX LAG ACTIVE | MODE: BETA | PLAYER:", Player.Name)
+print(">> FIX LAG (BETA) ACTIVE | MODE: PREMIUM")
