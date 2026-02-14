@@ -1,134 +1,152 @@
---========================================================
---  FIX LAG / FPS BOOST - FULL GRAPHICS STABLE
---  Dynamic Load Control | Combat Smooth | Client Safe
---========================================================
+--####################################################################
+--##  ULTRA FIX LAG / FPS BOOST - FULL GRAPHICS COMBAT STABILIZER   ##
+--##  Authoring Level: Advanced Client Optimization                ##
+--####################################################################
 
 repeat task.wait() until game:IsLoaded()
 
---================ SERVICES =================
-local Players     = game:GetService("Players")
-local Lighting    = game:GetService("Lighting")
-local RunService  = game:GetService("RunService")
-local Workspace   = game:GetService("Workspace")
-local StarterGui  = game:GetService("StarterGui")
-local Stats       = game:GetService("Stats")
+-------------------- SERVICES --------------------
+local Players    = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Lighting   = game:GetService("Lighting")
+local Workspace  = game:GetService("Workspace")
+local StarterGui = game:GetService("StarterGui")
 
 local Player = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
---================ NOTIFY =================
+-------------------- NOTIFY --------------------
 pcall(function()
     StarterGui:SetCore("SendNotification", {
-        Title = "FIX LAG (beta)",
-        Text = "Full Graphics FPS Boost Activated",
-        Duration = 5
+        Title = "ULTRA FIX LAG",
+        Text  = "Full Graphics Stabilizer Active",
+        Duration = 6
     })
 end)
 
-local Hint = Instance.new("Hint")
-Hint.Text = "🔵 Fix Lag = Active"
-Hint.Parent = Workspace
-task.delay(6, function() Hint:Destroy() end)
+local hint = Instance.new("Hint")
+hint.Text = "🔵 Fix Lag = ACTIVE (ULTRA MODE)"
+hint.Parent = Workspace
+task.delay(7, function() hint:Destroy() end)
 
---================ SKY + FOG =================
-for _, v in ipairs(Lighting:GetChildren()) do
+-------------------- SKY / FOG --------------------
+for _,v in ipairs(Lighting:GetChildren()) do
     if v:IsA("Sky") then v:Destroy() end
 end
 Lighting.FogStart = 1e9
 Lighting.FogEnd   = 1e9
 
---================ BASE SAFE SETTINGS =================
+-------------------- BASE RENDER --------------------
 pcall(function()
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Level05
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level08
 end)
-
 Camera.FieldOfView = 70
 
---================ EFFECT CONTROLLER =================
-local function optimizeEffect(obj, aggressive)
+-------------------- STATE --------------------
+local STATE = {
+    fps = 60,
+    load = "IDLE", -- IDLE | LIGHT | HEAVY | EXTREME
+}
+
+-------------------- FPS METER (STABLE) --------------------
+local frameCount = 0
+local last = os.clock()
+
+RunService.RenderStepped:Connect(function()
+    frameCount += 1
+    local now = os.clock()
+    if now - last >= 1 then
+        STATE.fps = frameCount
+        frameCount = 0
+        last = now
+    end
+end)
+
+-------------------- LOAD CLASSIFIER --------------------
+local function classifyLoad()
+    if STATE.fps >= 58 then
+        return "IDLE"
+    elseif STATE.fps >= 48 then
+        return "LIGHT"
+    elseif STATE.fps >= 38 then
+        return "HEAVY"
+    else
+        return "EXTREME"
+    end
+end
+
+-------------------- EFFECT BUDGET SYSTEM --------------------
+local EFFECT_LIMIT = {
+    IDLE    = 1.0,
+    LIGHT   = 0.7,
+    HEAVY   = 0.45,
+    EXTREME = 0.25
+}
+
+local function optimizeEffect(obj)
     if obj:IsA("ParticleEmitter") then
-        if aggressive then
-            obj.Rate = math.clamp(obj.Rate, 0, 15)
-            obj.LightEmission = 0
-        else
-            obj.Rate = math.clamp(obj.Rate, 0, 35)
-        end
+        obj.Rate = math.floor(obj.Rate * EFFECT_LIMIT[STATE.load])
+        obj.LightEmission = 0
+        obj.LightInfluence = 0
+
     elseif obj:IsA("Trail") or obj:IsA("Beam") then
-        if aggressive then
+        if STATE.load == "EXTREME" then
             obj.Enabled = false
         end
     end
 end
 
---================ INITIAL PASS =================
-for _, obj in ipairs(Workspace:GetDescendants()) do
-    optimizeEffect(obj, false)
+-------------------- APPLY PASS --------------------
+local function fullOptimize()
+    for _,obj in ipairs(Workspace:GetDescendants()) do
+        optimizeEffect(obj)
+        if obj:IsA("BasePart") then
+            obj.CastShadow = false
+            obj.Reflectance = 0
+        end
+    end
 end
 
---================ DYNAMIC FPS MONITOR =================
-local aggressiveMode = false
-local lastCheck = tick()
+fullOptimize()
 
+-------------------- DYNAMIC CONTROLLER --------------------
 task.spawn(function()
-    while task.wait(1) do
-        local fps = math.floor(1 / RunService.RenderStepped:Wait())
-
-        -- Khi FPS tụt mạnh → bật chế độ combat/load cao
-        if fps < 45 and not aggressiveMode then
-            aggressiveMode = true
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                optimizeEffect(obj, true)
-            end
-
-        -- Khi FPS ổn định lại → trả hiệu ứng
-        elseif fps > 58 and aggressiveMode then
-            aggressiveMode = false
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                optimizeEffect(obj, false)
-            end
+    while task.wait(0.5) do
+        local newState = classifyLoad()
+        if newState ~= STATE.load then
+            STATE.load = newState
+            fullOptimize()
         end
     end
 end)
 
---================ NEW EFFECT SPAWN CONTROL =================
+-------------------- SPAWN CONTROL --------------------
 Workspace.DescendantAdded:Connect(function(obj)
-    optimizeEffect(obj, aggressiveMode)
+    optimizeEffect(obj)
 end)
 
---================ PART OPTIMIZATION (SAFE) =================
-for _, obj in ipairs(Workspace:GetDescendants()) do
-    if obj:IsA("BasePart") then
-        obj.CastShadow = false
-        obj.Reflectance = 0
-    end
+-------------------- TERRAIN --------------------
+local terrain = Workspace:FindFirstChildOfClass("Terrain")
+if terrain then
+    terrain.WaterWaveSize = 0
+    terrain.WaterWaveSpeed = 0
+    terrain.WaterReflectance = 0
+    terrain.WaterTransparency = 1
 end
 
---================ TERRAIN =================
-local Terrain = Workspace:FindFirstChildOfClass("Terrain")
-if Terrain then
-    Terrain.WaterWaveSize = 0
-    Terrain.WaterWaveSpeed = 0
-    Terrain.WaterReflectance = 0
-    Terrain.WaterTransparency = 1
-end
-
---================ MEMORY STABILIZER =================
+-------------------- MEMORY STABILIZER --------------------
 task.spawn(function()
-    while task.wait(25) do
-        pcall(function()
-            collectgarbage("step", 200)
-        end)
+    while task.wait(20) do
+        collectgarbage("step", 300)
     end
 end)
 
---================ CHARACTER SAFE RESET =================
+-------------------- CHARACTER SAFE --------------------
 Player.CharacterAdded:Connect(function(char)
     task.wait(1)
-    for _, obj in ipairs(char:GetDescendants()) do
-        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-            optimizeEffect(obj, aggressiveMode)
-        end
+    for _,obj in ipairs(char:GetDescendants()) do
+        optimizeEffect(obj)
     end
 end)
 
-print(">> FIX LAG FULL GRAPHICS ACTIVE | PLAYER:", Player.Name)
+print(">> ULTRA FIX LAG ACTIVE | MODE: BETA | PLAYER:", Player.Name)
