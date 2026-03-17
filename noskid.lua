@@ -1,123 +1,152 @@
 --####################################################################
---##  V3 EXTREME POTATO MODE - ULTIMATE FPS BOOST                   ##
---##  Warning: Game đồ họa sẽ trông như cục đất sét nhưng FPS MAX   ##
+--##  ULTRA FIX LAG / FPS BOOST - FULL GRAPHICS COMBAT STABILIZER   ##
+--##  Authoring Level: Advanced Client Optimization                ##
 --####################################################################
 
-if not game:IsLoaded() then game.Loaded:Wait() end
+repeat task.wait() until game:IsLoaded()
 
+-------------------- SERVICES --------------------
+local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
-local MaterialService = game:GetService("MaterialService")
-local NetworkClient = game:GetService("NetworkClient")
+local Lighting   = game:GetService("Lighting")
+local Workspace  = game:GetService("Workspace")
+local StarterGui = game:GetService("StarterGui")
 
--- 1. UNLOCK FPS (Chỉ hoạt động trên các executor hỗ trợ)
+local Player = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+-------------------- NOTIFY --------------------
 pcall(function()
-    if setfpscap then
-        setfpscap(999) -- Gỡ bỏ giới hạn 60 FPS mặc định của Roblox
+    StarterGui:SetCore("SendNotification", {
+        Title = "ULTRA FIX LAG",
+        Text  = "Full Graphics Stabilizer Active",
+        Duration = 6
+    })
+end)
+
+local hint = Instance.new("Hint")
+hint.Text = "🔵 Fix Lag = ACTIVE (ULTRA MODE)"
+hint.Parent = Workspace
+task.delay(7, function() hint:Destroy() end)
+
+-------------------- SKY / FOG --------------------
+for _,v in ipairs(Lighting:GetChildren()) do
+    if v:IsA("Sky") then v:Destroy() end
+end
+Lighting.FogStart = 1e9
+Lighting.FogEnd   = 1e9
+
+-------------------- BASE RENDER --------------------
+pcall(function()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level08
+end)
+Camera.FieldOfView = 70
+
+-------------------- STATE --------------------
+local STATE = {
+    fps = 60,
+    load = "IDLE", -- IDLE | LIGHT | HEAVY | EXTREME
+}
+
+-------------------- FPS METER (STABLE) --------------------
+local frameCount = 0
+local last = os.clock()
+
+RunService.RenderStepped:Connect(function()
+    frameCount += 1
+    local now = os.clock()
+    if now - last >= 1 then
+        STATE.fps = frameCount
+        frameCount = 0
+        last = now
     end
 end)
 
--- 2. ÉP RENDER XUỐNG ĐÁY & TẮT TÍNH TOÁN VẬT LÝ THỪA
-pcall(function()
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
-    settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
-    settings().Network.IncomingReplicationLag = 0
-end)
-
--- 3. HỦY DIỆT TOÀN BỘ ÁNH SÁNG & SƯƠNG MÙ VĨNH VIỄN
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 9e9
-Lighting.FogStart = 9e9
-Lighting.Brightness = 0
-Lighting.ClockTime = 12
-Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
-Lighting.ColorShift_Top = Color3.fromRGB(0, 0, 0)
-Lighting.Ambient = Color3.fromRGB(120, 120, 120)
-Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
-
-for _, v in pairs(Lighting:GetDescendants()) do
-    if v:IsA("PostEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
-        v:Destroy()
+-------------------- LOAD CLASSIFIER --------------------
+local function classifyLoad()
+    if STATE.fps >= 58 then
+        return "IDLE"
+    elseif STATE.fps >= 48 then
+        return "LIGHT"
+    elseif STATE.fps >= 38 then
+        return "HEAVY"
+    else
+        return "EXTREME"
     end
 end
 
--- 4. TẮT CÔNG NGHỆ VẬT LIỆU MỚI TỐN RAM (PBR)
-pcall(function()
-    MaterialService.Use2022Materials = false
+-------------------- EFFECT BUDGET SYSTEM --------------------
+local EFFECT_LIMIT = {
+    IDLE    = 1.0,
+    LIGHT   = 0.7,
+    HEAVY   = 0.45,
+    EXTREME = 0.25
+}
+
+local function optimizeEffect(obj)
+    if obj:IsA("ParticleEmitter") then
+        obj.Rate = math.floor(obj.Rate * EFFECT_LIMIT[STATE.load])
+        obj.LightEmission = 0
+        obj.LightInfluence = 0
+
+    elseif obj:IsA("Trail") or obj:IsA("Beam") then
+        if STATE.load == "EXTREME" then
+            obj.Enabled = false
+        end
+    end
+end
+
+-------------------- APPLY PASS --------------------
+local function fullOptimize()
+    for _,obj in ipairs(Workspace:GetDescendants()) do
+        optimizeEffect(obj)
+        if obj:IsA("BasePart") then
+            obj.CastShadow = false
+            obj.Reflectance = 0
+        end
+    end
+end
+
+fullOptimize()
+
+-------------------- DYNAMIC CONTROLLER --------------------
+task.spawn(function()
+    while task.wait(0.5) do
+        local newState = classifyLoad()
+        if newState ~= STATE.load then
+            STATE.load = newState
+            fullOptimize()
+        end
+    end
 end)
 
--- 5. XÓA BỎ MÔI TRƯỜNG NƯỚC VÀ CỎ 3D
+-------------------- SPAWN CONTROL --------------------
+Workspace.DescendantAdded:Connect(function(obj)
+    optimizeEffect(obj)
+end)
+
+-------------------- TERRAIN --------------------
 local terrain = Workspace:FindFirstChildOfClass("Terrain")
 if terrain then
     terrain.WaterWaveSize = 0
     terrain.WaterWaveSpeed = 0
     terrain.WaterReflectance = 0
     terrain.WaterTransparency = 1
-    terrain.Decoration = false
-    terrain.CastShadow = false
 end
 
--- 6. HÀM GỌT GIŨA VẬT THỂ (XÓA TEXTURE, ÉP NHỰA TRƠN)
-local function potatoOptimize(obj)
-    if obj:IsA("BasePart") and not obj:IsA("Terrain") then
-        obj.Material = Enum.Material.SmoothPlastic
-        obj.Reflectance = 0
-        obj.CastShadow = false
-    elseif obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("SurfaceAppearance") then
-        -- Xóa sạch các lớp vân bề mặt, áo quần dán lên tường/đất
-        obj:Destroy()
-    elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-        -- Xóa vĩnh viễn hiệu ứng thay vì chỉ tắt (Enabled = false) để giải phóng RAM
-        obj:Destroy()
-    elseif obj:IsA("SpotLight") or obj:IsA("SurfaceLight") or obj:IsA("PointLight") then
-        obj:Destroy()
-    elseif obj:IsA("MeshPart") then
-        -- Giảm độ chi tiết của lưới 3D
-        obj.CastShadow = false
-        obj.RenderFidelity = Enum.RenderFidelity.Performance
-        obj.TextureID = ""
-    end
-end
-
--- 7. QUÉT TOÀN BỘ MAP (CÓ CHỐNG ĐƠ GAME)
+-------------------- MEMORY STABILIZER --------------------
 task.spawn(function()
-    local descendants = Workspace:GetDescendants()
-    local count = 0
-    for _, obj in pairs(descendants) do
-        potatoOptimize(obj)
-        count = count + 1
-        if count >= 300 then
-            task.wait() -- Nghỉ một chút để CPU không bị quá tải lúc quét
-            count = 0
-        end
-    end
-    print(">> V3 POTATO MODE: Đã dọn dẹp xong toàn bộ map!")
-end)
-
--- 8. TỰ ĐỘNG XÓA HIỆU ỨNG CHIÊU THỨC KHI VỪA SINH RA
-Workspace.DescendantAdded:Connect(function(obj)
-    -- Dùng task.delay nhẹ để đảm bảo vật thể đã load hẳn trước khi gọt giũa
-    task.delay(0.01, function()
-        potatoOptimize(obj)
-    end)
-end)
-
--- 9. DỌN RÁC RAM TỰ ĐỘNG (GARBAGE COLLECTION)
-task.spawn(function()
-    while task.wait(30) do
-        -- Cứ 30 giây dọn dẹp bộ nhớ đệm một lần
-        collectgarbage("collect")
+    while task.wait(20) do
+        collectgarbage("step", 300)
     end
 end)
 
--- Hiển thị thông báo
-local StarterGui = game:GetService("StarterGui")
-pcall(function()
-    StarterGui:SetCore("SendNotification", {
-        Title = "POTATO MODE ON",
-        Text  = "Đã hủy diệt đồ họa. Tận hưởng Max FPS!",
-        Duration = 5
-    })
+-------------------- CHARACTER SAFE --------------------
+Player.CharacterAdded:Connect(function(char)
+    task.wait(1)
+    for _,obj in ipairs(char:GetDescendants()) do
+        optimizeEffect(obj)
+    end
 end)
+
+print(">> ULTRA FIX LAG ACTIVE | MODE: ADAPTIVE | PLAYER:", Player.Name)
