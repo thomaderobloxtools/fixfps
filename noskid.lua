@@ -1,100 +1,123 @@
 --####################################################################
---##  GOD TIER FIX LAG - MAX FPS UNLOCKER                           ##
---##  Authoring Level: Extreme Engine Optimization                  ##
+--##  V3 EXTREME POTATO MODE - ULTIMATE FPS BOOST                   ##
+--##  Warning: Game đồ họa sẽ trông như cục đất sét nhưng FPS MAX   ##
 --####################################################################
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 
--------------------- SERVICES --------------------
 local RunService = game:GetService("RunService")
-local Lighting   = game:GetService("Lighting")
-local Workspace  = game:GetService("Workspace")
-local Players    = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local MaterialService = game:GetService("MaterialService")
+local NetworkClient = game:GetService("NetworkClient")
 
--------------------- ENGINE SETTINGS --------------------
--- Ép render về mức thấp nhất thực sự thay vì mức 08
+-- 1. UNLOCK FPS (Chỉ hoạt động trên các executor hỗ trợ)
+pcall(function()
+    if setfpscap then
+        setfpscap(999) -- Gỡ bỏ giới hạn 60 FPS mặc định của Roblox
+    end
+end)
+
+-- 2. ÉP RENDER XUỐNG ĐÁY & TẮT TÍNH TOÁN VẬT LÝ THỪA
 pcall(function()
     settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
     settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+    settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
+    settings().Network.IncomingReplicationLag = 0
 end)
 
--------------------- LIGHTING & ENVIRONMENT --------------------
--- Tắt toàn bộ đổ bóng và sương mù
+-- 3. HỦY DIỆT TOÀN BỘ ÁNH SÁNG & SƯƠNG MÙ VĨNH VIỄN
 Lighting.GlobalShadows = false
 Lighting.FogEnd = 9e9
 Lighting.FogStart = 9e9
-Lighting.Brightness = 1
+Lighting.Brightness = 0
+Lighting.ClockTime = 12
+Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
+Lighting.ColorShift_Top = Color3.fromRGB(0, 0, 0)
+Lighting.Ambient = Color3.fromRGB(120, 120, 120)
+Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
 
--- Diệt tận gốc các hiệu ứng Post-Processing gây tụt FPS
-for _, effect in pairs(Lighting:GetDescendants()) do
-    if effect:IsA("PostEffect") or effect:IsA("BlurEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("BloomEffect") or effect:IsA("DepthOfFieldEffect") or effect:IsA("Sky") then
-        effect:Destroy()
+for _, v in pairs(Lighting:GetDescendants()) do
+    if v:IsA("PostEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
+        v:Destroy()
     end
 end
 
--------------------- TERRAIN REDUCTION --------------------
+-- 4. TẮT CÔNG NGHỆ VẬT LIỆU MỚI TỐN RAM (PBR)
+pcall(function()
+    MaterialService.Use2022Materials = false
+end)
+
+-- 5. XÓA BỎ MÔI TRƯỜNG NƯỚC VÀ CỎ 3D
 local terrain = Workspace:FindFirstChildOfClass("Terrain")
 if terrain then
     terrain.WaterWaveSize = 0
     terrain.WaterWaveSpeed = 0
     terrain.WaterReflectance = 0
     terrain.WaterTransparency = 1
-    terrain.Decoration = false -- Tắt cỏ 3D (cực kỳ nặng)
-    pcall(function()
-        terrain:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(100, 100, 100))
-    end)
+    terrain.Decoration = false
+    terrain.CastShadow = false
 end
 
--------------------- DEEP OPTIMIZER FUNCTION --------------------
-local function optimizeObject(obj)
-    -- Chuyển mọi thứ thành SmoothPlastic và tắt bóng
+-- 6. HÀM GỌT GIŨA VẬT THỂ (XÓA TEXTURE, ÉP NHỰA TRƠN)
+local function potatoOptimize(obj)
     if obj:IsA("BasePart") and not obj:IsA("Terrain") then
         obj.Material = Enum.Material.SmoothPlastic
         obj.Reflectance = 0
         obj.CastShadow = false
-    -- Vô hiệu hóa hiệu ứng hạt và tia sáng
-    elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-        obj.Enabled = false
-    -- Tắt hiển thị decal/texture không cần thiết
-    elseif obj:IsA("Decal") or obj:IsA("Texture") then
-        obj.Transparency = 1
-    -- Xóa các hiệu ứng cháy nổ, lấp lánh dính trên part
-    elseif obj:IsA("Fire") or obj:IsA("SpotLight") or obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-        obj.Enabled = false
+    elseif obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("SurfaceAppearance") then
+        -- Xóa sạch các lớp vân bề mặt, áo quần dán lên tường/đất
+        obj:Destroy()
+    elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+        -- Xóa vĩnh viễn hiệu ứng thay vì chỉ tắt (Enabled = false) để giải phóng RAM
+        obj:Destroy()
+    elseif obj:IsA("SpotLight") or obj:IsA("SurfaceLight") or obj:IsA("PointLight") then
+        obj:Destroy()
+    elseif obj:IsA("MeshPart") then
+        -- Giảm độ chi tiết của lưới 3D
+        obj.CastShadow = false
+        obj.RenderFidelity = Enum.RenderFidelity.Performance
+        obj.TextureID = ""
     end
 end
 
--------------------- BATCH PROCESSING (ANTI-FREEZE) --------------------
--- Chạy quét một lần duy nhất với task.wait() để không làm treo game khi mới bật
+-- 7. QUÉT TOÀN BỘ MAP (CÓ CHỐNG ĐƠ GAME)
 task.spawn(function()
-    local allObjects = Workspace:GetDescendants()
-    for i, obj in pairs(allObjects) do
-        optimizeObject(obj)
-        -- Cứ quét xong 500 vật thể sẽ nghỉ 1 frame để CPU thở
-        if i % 500 == 0 then
-            task.wait()
+    local descendants = Workspace:GetDescendants()
+    local count = 0
+    for _, obj in pairs(descendants) do
+        potatoOptimize(obj)
+        count = count + 1
+        if count >= 300 then
+            task.wait() -- Nghỉ một chút để CPU không bị quá tải lúc quét
+            count = 0
         end
     end
-    print(">> GOD TIER FIX LAG: Hoàn tất dọn dẹp môi trường ban đầu!")
+    print(">> V3 POTATO MODE: Đã dọn dẹp xong toàn bộ map!")
 end)
 
--------------------- DYNAMIC LISTENER --------------------
--- Tự động tối ưu các vật thể mới được sinh ra (chiêu thức, quái vật mới, v.v.)
+-- 8. TỰ ĐỘNG XÓA HIỆU ỨNG CHIÊU THỨC KHI VỪA SINH RA
 Workspace.DescendantAdded:Connect(function(obj)
-    optimizeObject(obj)
+    -- Dùng task.delay nhẹ để đảm bảo vật thể đã load hẳn trước khi gọt giũa
+    task.delay(0.01, function()
+        potatoOptimize(obj)
+    end)
 end)
 
--------------------- NOTIFICATION --------------------
+-- 9. DỌN RÁC RAM TỰ ĐỘNG (GARBAGE COLLECTION)
+task.spawn(function()
+    while task.wait(30) do
+        -- Cứ 30 giây dọn dẹp bộ nhớ đệm một lần
+        collectgarbage("collect")
+    end
+end)
+
+-- Hiển thị thông báo
+local StarterGui = game:GetService("StarterGui")
 pcall(function()
     StarterGui:SetCore("SendNotification", {
-        Title = "GOD TIER ACTIVE",
-        Text  = "Đồ họa đã được nén tối đa. Siêu mượt!",
-        Duration = 6
+        Title = "POTATO MODE ON",
+        Text  = "Đã hủy diệt đồ họa. Tận hưởng Max FPS!",
+        Duration = 5
     })
 end)
-
-local hint = Instance.new("Hint")
-hint.Text = "🟢 FPS UNLOCKED & MAXIMIZED!"
-hint.Parent = Workspace
-task.delay(5, function() hint:Destroy() end)
